@@ -1,6 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-// Load persisted state from localStorage
 const userFromStorage = JSON.parse(localStorage.getItem("user")) || null;
 const adminFromStorage = JSON.parse(localStorage.getItem("admin")) || null;
 

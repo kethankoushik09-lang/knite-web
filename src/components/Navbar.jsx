@@ -105,12 +105,10 @@ export default function Navbar() {
           Task Manager
         </h2>
 
-        {/* Desktop Links */}
         <div className="hidden md:flex gap-4 items-center">
           {renderButtons()}
         </div>
 
-        {/* Mobile Menu Toggle */}
         <button
           className="md:hidden text-gray-700 focus:outline-none"
           onClick={() => setIsOpen(!isOpen)}
@@ -140,7 +138,6 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Menu Items */}
       <div
         className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${
           isOpen ? "max-h-96 mt-2" : "max-h-0"

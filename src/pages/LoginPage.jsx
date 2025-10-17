@@ -23,7 +23,6 @@ export default function LoginPage() {
 
     try {
       if (isSignup) {
-        // ✅ Signup API
         const res = await axios.post(
           `${api_url}/api/auth/user/signup`,
           { name, email, password },
@@ -46,7 +45,6 @@ export default function LoginPage() {
           throw new Error(res.data.message || "Signup failed");
         }
       } else {
-        // ✅ Login API
         const res = await axios.post(
           `${api_url}/api/auth/user/login`,
           { email, password },

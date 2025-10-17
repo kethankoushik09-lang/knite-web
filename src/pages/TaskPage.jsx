@@ -26,9 +26,8 @@ export default function TaskPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
-  const API_URL = `${api_url}/api/task`; // ✅ use dynamic base URL
+  const API_URL = `${api_url}/api/task`; 
 
-  // --- GET Tasks on component mount ---
   useEffect(() => {
     if (!isLoggedIn) return;
     const fetchTasks = async () => {

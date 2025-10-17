@@ -8,7 +8,6 @@ export default function AdminDashboard() {
   const { admin } = useSelector((state) => state.auth);
   console.log("Admin data:", admin);
 
-  // Make sure userStats exists and is an array
   const users = admin|| [];
 
   if (selectedUser) {
