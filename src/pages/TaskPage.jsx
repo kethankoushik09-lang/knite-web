@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   FaTrash,
   FaCheck,
@@ -9,17 +10,14 @@ import {
   FaSearch,
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
+import api_url from "../utils/Api";
 
 export default function TaskPage() {
-  const { user } = useSelector((state) => state.auth);
-
-  // Initialize tasks safely
-  const initialTasks = (user?.tasks || []).map((t) => ({
-    ...t,
-    _id: t._id || t.id || Date.now() + Math.random(),
-  }));
-
-  const [tasks, setTasks] = useState(initialTasks);
+  const { isLoggedIn } = useSelector((state) => state.auth);
+  const [tasks, setTasks] = useState(() => {
+    const saved = localStorage.getItem("tasks");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [filter, setFilter] = useState("all");
@@ -28,76 +26,115 @@ export default function TaskPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
-  // Add new task
-  const addTask = (e) => {
+  const API_URL = `${api_url}/api/task`; // ✅ use dynamic base URL
+
+  // --- GET Tasks on component mount ---
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const fetchTasks = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/get`, {
+          withCredentials: true,
+        });
+        setTasks(res.data);
+      } catch (err) {
+        console.error(
+          "Error fetching tasks:",
+          err.response?.data || err.message
+        );
+      }
+    };
+    fetchTasks();
+  }, [isLoggedIn]);
+
+  // --- Add Task ---
+  const addTask = async (e) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
 
-    const newTask = {
-      _id: Date.now(),
-      title,
-      description,
-      completed: false,
-    };
-
-    setTasks([newTask, ...tasks]);
-    setTitle("");
-    setDescription("");
+    try {
+      const res = await axios.post(
+        `${API_URL}/add`,
+        { title, description },
+        { withCredentials: true }
+      );
+      setTasks([res.data.task, ...tasks]);
+      setTitle("");
+      setDescription("");
+    } catch (err) {
+      console.error("Error adding task:", err.response?.data || err.message);
+    }
   };
 
-  // Toggle completion
-  const toggleComplete = (_id) => {
-    setTasks(
-      tasks.map((task) =>
-        task._id === _id ? { ...task, completed: !task.completed } : task
-      )
-    );
+  // --- Toggle Complete ---
+  const toggleComplete = async (task) => {
+    try {
+      const res = await axios.put(
+        `${API_URL}/update/${task._id}`,
+        { completed: !task.completed },
+        { withCredentials: true }
+      );
+      setTasks(tasks.map((t) => (t._id === task._id ? res.data : t)));
+    } catch (err) {
+      console.error("Error updating task:", err.response?.data || err.message);
+    }
   };
 
-  // Delete task
-  const deleteTask = (_id) => {
-    setTasks(tasks.filter((task) => task._id !== _id));
+  // --- Delete Task ---
+  const deleteTask = async (taskId) => {
+    try {
+      await axios.delete(`${API_URL}/delete/${taskId}`, {
+        withCredentials: true,
+      });
+      setTasks(tasks.filter((t) => t._id !== taskId));
+    } catch (err) {
+      console.error("Error deleting task:", err.response?.data || err.message);
+    }
   };
 
-  // Start editing
+  // --- Start Editing ---
   const startEditing = (task) => {
     setEditingTask(task._id);
     setEditTitle(task.title);
     setEditDescription(task.description);
   };
 
-  // Save edited task
-  const saveEdit = (_id) => {
-    setTasks(
-      tasks.map((task) =>
-        task._id === _id
-          ? { ...task, title: editTitle, description: editDescription }
-          : task
-      )
-    );
-    setEditingTask(null);
+  // --- Save Edited Task ---
+  const saveEdit = async (taskId) => {
+    try {
+      const res = await axios.put(
+        `${API_URL}/update/${taskId}`,
+        { title: editTitle, description: editDescription },
+        { withCredentials: true }
+      );
+
+      setTasks(tasks.map((t) => (t._id === taskId ? res.data : t)));
+      setEditingTask(null);
+    } catch (err) {
+      console.error("Error editing task:", err.response?.data || err.message);
+    }
   };
 
-  // Cancel edit
-  const cancelEdit = () => {
-    setEditingTask(null);
-  };
+  const cancelEdit = () => setEditingTask(null);
 
-  // Apply filter + search
-  const filteredTasks = tasks.filter((task) => {
-    const matchesFilter =
-      filter === "all"
-        ? true
-        : filter === "completed"
-        ? task.completed
-        : !task.completed;
+  // --- Filter + Search ---
+  const filteredTasks =
+    tasks && tasks.length > 0
+      ? tasks.filter((task) => {
+          const matchesFilter =
+            filter === "all"
+              ? true
+              : filter === "completed"
+              ? task.completed
+              : !task.completed;
 
-    const matchesSearch = task.title
-      .toLowerCase()
-      .includes(search.toLowerCase());
+          const matchesSearch = task.title
+            .toLowerCase()
+            .includes(search.toLowerCase());
 
-    return matchesFilter && matchesSearch;
-  });
+          return matchesFilter && matchesSearch;
+        })
+      : [];
 
   return (
     <div className="min-h-screen bg-[#f0f8ff] p-6 flex flex-col items-center">
@@ -158,99 +195,95 @@ export default function TaskPage() {
           </div>
         </div>
 
-        {/* Scrollable Task List */}
+        {/* Task List */}
         <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
           {filteredTasks.length === 0 ? (
             <p className="text-center text-gray-500">No tasks found</p>
           ) : (
-            <div className="flex flex-col gap-4">
-              {filteredTasks.map((task) => (
-                <div
-                  key={task._id}
-                  className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-4 border rounded-md shadow-md transition-all hover:shadow-lg ${
-                    task.completed ? "bg-green-50 border-green-300" : "bg-white"
-                  }`}
-                >
-                  {editingTask === task._id ? (
-                    // --- Edit Mode ---
-                    <div className="flex-1 w-full">
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
+            filteredTasks.map((task) => (
+              <div
+                key={task._id}
+                className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-4 border rounded-md shadow-md transition-all hover:shadow-lg ${
+                  task.completed ? "bg-green-50 border-green-300" : "bg-white"
+                }`}
+              >
+                {editingTask === task._id ? (
+                  <div className="flex-1 w-full">
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
+                    />
+                    <input
+                      type="text"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
+                    />
+                    <div className="flex gap-2">
+                      <FaSave
+                        onClick={() => saveEdit(task._id)}
+                        className="text-green-600 text-xl cursor-pointer hover:scale-110 transition"
+                        title="Save"
                       />
-                      <input
-                        type="text"
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
+                      <FaTimes
+                        onClick={cancelEdit}
+                        className="text-gray-500 text-xl cursor-pointer hover:scale-110 transition"
+                        title="Cancel"
                       />
-                      <div className="flex gap-2">
-                        <FaSave
-                          onClick={() => saveEdit(task._id)}
-                          className="text-green-600 text-xl cursor-pointer hover:scale-110 transition"
-                          title="Save"
-                        />
-                        <FaTimes
-                          onClick={cancelEdit}
-                          className="text-gray-500 text-xl cursor-pointer hover:scale-110 transition"
-                          title="Cancel"
-                        />
-                      </div>
                     </div>
-                  ) : (
-                    // --- View Mode ---
-                    <>
-                      <div className="flex-1">
-                        <h3
-                          className={`font-semibold text-gray-800 text-lg ${
-                            task.completed ? "line-through text-gray-400" : ""
-                          }`}
-                        >
-                          {task.title}
-                        </h3>
-                        <p
-                          className={`text-gray-600 ${
-                            task.completed ? "line-through text-gray-400" : ""
-                          }`}
-                        >
-                          {task.description}
-                        </p>
-                      </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex-1">
+                      <h3
+                        className={`font-semibold text-gray-800 text-lg ${
+                          task.completed ? "line-through text-gray-400" : ""
+                        }`}
+                      >
+                        {task.title}
+                      </h3>
+                      <p
+                        className={`text-gray-600 ${
+                          task.completed ? "line-through text-gray-400" : ""
+                        }`}
+                      >
+                        {task.description}
+                      </p>
+                    </div>
 
-                      <div className="flex gap-3">
-                        {task.completed ? (
-                          <FaUndo
-                            onClick={() => toggleComplete(task._id)}
-                            className="text-gray-500 text-xl cursor-pointer hover:scale-110 transition"
-                            title="Undo"
-                          />
-                        ) : (
-                          <FaCheck
-                            onClick={() => toggleComplete(task._id)}
-                            className="text-green-600 text-xl cursor-pointer hover:scale-110 transition"
-                            title="Mark Complete"
-                          />
-                        )}
-
-                        <FaEdit
-                          onClick={() => startEditing(task)}
-                          className="text-blue-600 text-xl cursor-pointer hover:scale-110 transition"
-                          title="Edit"
+                    <div className="flex gap-3">
+                      {task.completed ? (
+                        <FaUndo
+                          onClick={() => toggleComplete(task)}
+                          className="text-gray-500 text-xl cursor-pointer hover:scale-110 transition"
+                          title="Undo"
                         />
-
-                        <FaTrash
-                          onClick={() => deleteTask(task._id)}
-                          className="text-red-600 text-xl cursor-pointer hover:scale-110 transition"
-                          title="Delete"
+                      ) : (
+                        <FaCheck
+                          onClick={() => toggleComplete(task)}
+                          className="text-green-600 text-xl cursor-pointer hover:scale-110 transition"
+                          title="Mark Complete"
                         />
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+                      )}
+
+                      <FaEdit
+                        onClick={() => startEditing(task)}
+                        className="text-blue-600 text-xl cursor-pointer hover:scale-110 transition"
+                        title="Edit"
+                      />
+
+                      <FaTrash
+                        onClick={() => deleteTask(task._id)}
+                        className="text-red-600 text-xl cursor-pointer hover:scale-110 transition"
+                        title="Delete"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            ))
           )}
         </div>
       </div>

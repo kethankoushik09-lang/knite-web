@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutUser, logoutAdmin } from "../redux/slice/authSlice.js";
 import axios from "axios";
+import api_url from "../utils/Api.js";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +15,7 @@ export default function Navbar() {
   const handleUserLogout = async () => {
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/auth/user/logout"
+        `${api_url}/api/auth/user/logout`
       );
       if (res.data.success) {
         dispatch(logoutUser());
@@ -29,7 +30,7 @@ export default function Navbar() {
   const handleAdminLogout = async () => {
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/auth/admin/logout"
+        `${api_url}/api/auth/admin/logout`
       );
       if (res.data.success) {
         dispatch(logoutAdmin());
@@ -79,6 +80,9 @@ export default function Navbar() {
     } else {
       return (
         <>
+          <button onClick={() => navigate("/")} className={linkClasses}>
+            Home
+          </button>
           <NavLink to="/admin/login" className={linkClasses}>
             Admin Login
           </NavLink>

@@ -3,6 +3,7 @@ import axios from "axios";
 import { useDispatch} from "react-redux";
 import { loginAdmin } from "../redux/slice/authSlice";
 import { useNavigate } from "react-router-dom";
+import api_url from "../utils/Api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,7 +18,7 @@ export default function LoginPage() {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/auth/admin/login",
+        `${api_url}/api/auth/admin/login`,
         { email, password },
         { withCredentials: true }
       );
@@ -27,8 +28,6 @@ export default function LoginPage() {
       
 
       console.log("Login success:", res.data);
-      // You can navigate to dashboard here if needed
-      // navigate("/admin-dashboard");
     } catch (err) {
       console.error("Login failed:", err);
       if (err.response && err.response.data && err.response.data.message) {

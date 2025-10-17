@@ -3,13 +3,14 @@ import axios from "axios";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../redux/slice/authSlice.js";
+import api_url from "../utils/Api.js";
 
 export default function LoginPage() {
-  const [isSignup, setIsSignup] = useState(true); // true = Signup, false = Login
+  const [isSignup, setIsSignup] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(""); // To display success/error messages
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const dispatch = useDispatch();
@@ -22,37 +23,45 @@ export default function LoginPage() {
 
     try {
       if (isSignup) {
-        // Signup API
+        // ✅ Signup API
         const res = await axios.post(
-          "/api/auth/user/signup",
+          `${api_url}/api/auth/user/signup`,
           { name, email, password },
-          { withCredentials: true }
-        );
-        console.log(res.data);
-
-        setMessage("✅ Account created successfully! Please sign in.");
-        setIsSignup(false);
-      } else {
-        // Login API
-        const res = await axios.post(
-          "http://localhost:5000/api/auth/user/login",
-          { email, password },
           { withCredentials: true }
         );
 
         if (res.data.success) {
-          // Save user info in Redux
-
           dispatch(
             loginUser({
               ...res.data.user,
               tasks: res.data.tasks || [],
             })
           );
-          // Optionally, save tasks in localStorage or another slice
-          localStorage.setItem("tasks", JSON.stringify(res.data.tasks));
 
-          // Navigate to user home
+          localStorage.setItem("tasks", JSON.stringify(res.data.tasks || []));
+          navigate("/user/home");
+          setMessage("✅ Account created successfully! Please sign in.");
+          setIsSignup(false);
+        } else {
+          throw new Error(res.data.message || "Signup failed");
+        }
+      } else {
+        // ✅ Login API
+        const res = await axios.post(
+          `${api_url}/api/auth/user/login`,
+          { email, password },
+          { withCredentials: true }
+        );
+
+        if (res.data.success) {
+          dispatch(
+            loginUser({
+              ...res.data.user,
+              tasks: res.data.tasks || [],
+            })
+          );
+
+          localStorage.setItem("tasks", JSON.stringify(res.data.tasks || []));
           navigate("/user/home");
         } else {
           throw new Error(res.data.message || "Login failed");
@@ -70,12 +79,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f0f8ff] px-4">
       <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8">
-        {/* Heading */}
         <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
           {isSignup ? "Create Account" : "Sign In"}
         </h2>
 
-        {/* Form */}
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           {isSignup && (
             <div>
@@ -132,7 +139,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Message Below Form */}
         {message && (
           <p
             className={`text-center mt-4 font-medium ${
@@ -143,7 +149,6 @@ export default function LoginPage() {
           </p>
         )}
 
-        {/* Footer */}
         <p className="text-center text-gray-500 mt-4">
           {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
           <span
